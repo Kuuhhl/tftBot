@@ -55,6 +55,8 @@ def clickExitGame():
     pg.moveTo(config.exitGameButton[0], config.exitGameButton[1])
     clickMouse()
 
+async def skipWaitingForStats():
+    await connection.request("post", "/lol-end-of-game/v1/state/dismiss-stats")
 
 async def getPhase(connection):
     phase = await connection.request("get", "/lol-gameflow/v1/gameflow-phase")
@@ -89,11 +91,15 @@ async def searchGame(connection):
             elif phase == "Lobby" or phase == "None":
                 break
 
+            # Always skip waiting for stats
+            elif phase == "WaitingForStats":
+                    skipWaitingForStats()
+                
             # stop searching completely if game started
             else:
                 return
 
-            time.sleep(1)
+            time.sleep(2)
 
 
 def getTime():
@@ -130,7 +136,7 @@ def isRunning():
         # Before the game starts, the API is already available,
         # but the gameTime stays the same until the loading screen is completed.
         baseTime = getTime()
-        time.sleep(1)
+        time.sleep(0.1)
         return not getTime() == baseTime
 
     # if API isn't started yet / doesn't work properly,
@@ -147,7 +153,12 @@ def waitForGameStart():
 
 @connector.ready
 async def main(connection):
+    counter = 0
     while True:
+        counter += 1
+        print("---------------------")
+        print(f"Game number {counter}")
+        print("---------------------")
         print("Looking for game...")
 
         await searchGame(connection)
@@ -171,15 +182,20 @@ async def main(connection):
 
         print("Starting the bot...")
 
-        # Creating timer for 900 seconds = 15 mins.
         # At predefined timestamps, we do some actions
 
-        remaining = 900
+        # Initializing variable.
+        oldTime = -1
+        
         while True:
-            remaining = remaining - 1
-            time.sleep(1)
-
             try:
+                gameTime = int(getTime())
+
+                # only run the loop on whole new seconds
+                # / if seconds have changed.
+                if gameTime == oldTime:
+                    continue
+                
                 if isDead():
                     print("Dead. Entering next game...")
 
@@ -188,52 +204,61 @@ async def main(connection):
                         clickExitGame()
                         time.sleep(1)
                     break
+                
             # if we cannot ask the game API if we are dead,
             # it is already closed -> the game is not running anymore.
             except:
                 print("Game ended. Entering next game...")
                 break
 
-            if remaining == 830:
+            if gameTime == 70:
                 buyChampions(2)
                 moveCharacter(0)
                 moveCharacter(1)
 
-            if remaining == 775:
+            elif gameTime == 125:
                 buyChampions(1)
 
-            if remaining == 709:
+            elif gameTime == 191:
                 moveCharacter(1)
                 buyChampions(1)
                 levelUp(1)
 
-            if remaining == 660:
+            elif gameTime == 240:
                 buyChampions(1)
                 levelUp(1)
 
-            if remaining == 590:
+            elif gameTime == 310:
                 moveCharacter(1)
                 buyChampions(1)
                 moveCharacter(0)
 
-            if remaining == 320:
+            elif gameTime == 580:
                 buyChampions(1)
                 levelUp(1)
 
-            if remaining == 260:
+            elif gameTime == 640:
                 levelUp(1)
                 buyChampions(2)
                 moveCharacter(1)
 
-            if remaining == 60:
+            elif gameTime == 840:
                 levelUp(20)
                 moveCharacter(0)
                 moveCharacter(1)
 
             # every whole minute after 15 minutes:
-            if remaining < 1 and remaining % 60 == 0:
+            elif gameTime >= 900 and gameTime % 60 == 0:
                 levelUp(1)
                 buyChampions(1)
+                moveCharacter(0)
+                moveCharacter(1)
+
+            # smaller than seconds delay to make sure we don't
+            # skip some seconds.
+            time.sleep(0.5)
+            
+            oldTime = gameTime
 
         print("Starting next game...\n")
 
