@@ -1,4 +1,4 @@
 lcu_driver
 requests
 pyautogui
-win32gui
+pywin32
