@@ -185,7 +185,7 @@ async def main(connection):
 
                     # Click 'Leave' button until game closes
                     while isRunning():
-                        clicarSairJogo()
+                        clickExitGame()
                         time.sleep(1)
                     break
             # if we cannot ask the game API if we are dead,
